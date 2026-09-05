@@ -1,14 +1,15 @@
 #include "PMW3360.h"
+#include <ArduinoBLE.h>
 
 // Pin definitions
-#define NCS 7 // NCS
-#define MOT 2 
+#define NCS_pin 7 // NCS
+#define MOT_pin 2 
 
+//Params
+int CPI = 1600;
 
 // PMW3360 sensor object
 PMW3360 sensor;
-
-
 // Flag set by motion interrupt
 volatile bool motionDetected = false;
 
@@ -21,22 +22,17 @@ void setup() {
   delay(2000);
   Serial.begin(115200);
   while (!Serial); // Wait for Serial Monitor to open
-  Serial.println("Starting, attempting SPI connections");
 
-  // Initialize PMW3360 sensor with CPI = 1600
-  // CPI can be adjusted: 800, 1200, 1600, 3200, etc.
-  if (!sensor.begin(NCS, 1600)) {
-    Serial.println("PMW3360 initialization failed! Check wiring.");
-    while (1) {
-      // Halt
-    }
-  }
-  else{
-    Serial.println("Sensor ready.");
+  // Initialize PMW3360 sensor with CPI
+  if (!sensor.begin(NCS_pin, CPI)) {
+    Serial.println("initialization failure. Check wiring.");
+    while (1) {}// Halt
+  } else {
+    Serial.println("Initialization success.");
   }
 
+  //Init ble 
 
-  
 }
 
 void loop() {
