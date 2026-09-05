@@ -1,10 +1,20 @@
 #include <bluefruit.h>
+#include "PMW3360.h"
 //#include "BTfuncs.h"
+
+// Pin definitions
+#define NCS_pin 7 // NCS
+#define MOT_pin 2 
+// PMW3360 sensor object
+PMW3360 sensor;
+//Params
+int CPI = 800;
 
 //BLE init
 BLEDis bledis; // device info 
 BLEHidAdafruit blehid; // HID functions
 
+//callbacks for bluetooth events
 void connect_callback(uint16_t conn_handle){
   Serial.println("Connected!");
 }
@@ -18,6 +28,15 @@ void setup() {
   while (!Serial); // Wait for Serial Monitor to open
   Serial.println("Serial established.");
 
+  //Init sensor
+  if (!sensor.begin(NCS_pin, CPI)) {
+    Serial.println("initialization failure. Check wiring.");
+    while (1) {}// Halt
+  } else {
+    Serial.println("Initialization success.");
+  }
+
+  //Init bluetooth service
   Bluefruit.begin();
   Bluefruit.Periph.setConnectCallback(connect_callback);
   Bluefruit.Periph.setDisconnectCallback(disconnect_callback);
@@ -27,6 +46,7 @@ void setup() {
   blehid.begin();
   Serial.println("BLE HID and DIS started");
 
+  //Init advertising system - async after this (?)
   Bluefruit.Advertising.addService(blehid);
   Bluefruit.Advertising.addName();
   Bluefruit.Advertising.restartOnDisconnect(true);
@@ -39,13 +59,11 @@ void setup() {
 
 void loop() {
   // If the motion interrupt has fired, read the sensor and send movement
-  if(Bluefruit.connected()){
-    blehid.mouseMove(10, 0);
-    delay(1000);
-    blehid.mouseMove(-10, 0);
-    delay(1000);
-  }
-  else{
-    delay(1000);
+
+  if((digitalRead(MOT_pin) == LOW)&&(Bluefruit.connected())){
+    PMW3360_DATA data = sensor.readBurst(); 
+    if (data.isMotion && data.isOnSurface) {
+      blehid.mouseMove(data.dx, data.dy);
+    }
   }
 }

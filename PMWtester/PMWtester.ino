@@ -1,5 +1,5 @@
 #include "PMW3360.h"
-#include <ArduinoBLE.h>
+
 
 // Pin definitions
 #define NCS_pin 7 // NCS
