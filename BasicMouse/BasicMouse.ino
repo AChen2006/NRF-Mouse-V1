@@ -8,18 +8,17 @@
 #define NCS_pin 7 // NCS
 #define MOT_pin 2 
 
-#define M1 10
-#define M2 0
-#define SW_LT 9
-#define SW_RT 1
-#define SW_UP 2
-#define SW_DN 3
-#define SW_IN 4
+#define Nswitches 2
+//M1, M2, M3, LEFT, RIGHT, UP, DOWN
+bool buttonState[7] = {0};
+int8_t buttonMap[7] = {5,6,0,0,0,0,0};
+unsigned long lockTime[7] = {0};
+const unsigned long lockInterval = 10; //10ms
+const unsigned long scrollInterval = 200; //200ms
+
 
 // PMW3360 sensor object
 PMW3360 sensor;
-long dataX = 0;
-long dataY = 0;
 //Params
 int CPI = 1600;
 
@@ -28,6 +27,8 @@ BLEDis bledis; // device info
 BLEHidAdafruit blehid; // HID functions
 
 unsigned long timesince = 0;
+
+
 
 //callbacks for bluetooth events
 void connect_callback(uint16_t conn_handle){
@@ -54,6 +55,10 @@ void setup() {
   Serial.begin(115200);
   while (!Serial); // Wait for Serial Monitor to open
   Serial.println("Serial established.");
+
+  for (int i = 0; i<Nswitches; i++){
+   pinMode(buttonMap[i], INPUT_PULLUP);
+  }
 
   //Init sensor
   if (!sensor.begin(NCS_pin, CPI)) {
@@ -86,24 +91,52 @@ void setup() {
 
 }
 
-int count = 0;
+hid_mouse_report_t report{0,0,0,0,0};
+
 void loop() {
-  // If the motion interrupt has fired, read the sensor and send movement
-   
-  if((digitalRead(MOT_pin) == LOW)&&(Bluefruit.connected())){
-    PMW3360_DATA data = sensor.readBurst(); 
-    if (data.isMotion && data.isOnSurface) {
-      dataX += data.dx;
-      dataY += data.dy;
-      //Serial.println(data.SQUAL);
-      count++;
+  if(Bluefruit.connected()){
+    //switch state updater
+    //change a switch state IF the input is different, and past the change timer
+    //if not past the change timer, set the change timer to now
+    for(int i = 0; i<Nswitches; i++){
+      if((digitalRead(buttonMap[i]) != buttonState[i])&&(millis()>lockTime[i])){
+        lockTime[i] = millis()+lockInterval;
+        buttonState[i] = !buttonState[i];
+      }
     }
+
+    //update M1,2,3
+    for (int i = 0; i<4; i++){
+      if(buttonState[i] == 0){
+        report.buttons |= (1<<i);
+      }
+      else{
+        report.buttons &= ~(1<<i);
+      }
+    }
+
+
+    if(digitalRead(MOT_pin) == LOW){
+      PMW3360_DATA data = sensor.readBurst(); 
+      if (data.isMotion && data.isOnSurface) {
+        report.x = data.dx;
+        report.y = data.dy;
+        //Serial.println(data.SQUAL);
+      }
+    }
+    else{
+      report.x = 0;
+      report.y = 0;
+    }
+    blehid.mouseReport(&report);
+      
   }
-  if(millis()>timesince + 30){
-    blehid.mouseMove(dataX, dataY);
-    dataX = 0;
-    dataY = 0;
-    Serial.println(count);
-    count = 0;
-  }
+
+
+  // //generate BT HID report
+  // //Serial.println(digitalRead(M1));
+
+
+
+  
 }
