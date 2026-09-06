@@ -4,12 +4,12 @@
 
 // Pin definitions
 #define NCS_pin 7 // NCS
-#define MOT_pin 2 
+#define MOT_pin 2 // Burst ready signal pin
 
-#define Nswitches 2
+#define Nswitches 0
 //M1, M2, M3, LEFT, RIGHT, UP, DOWN
 bool buttonState[7] = {0};
-int8_t buttonMap[7] = {5,6,0,0,0,0,0};
+int8_t buttonMap[7] = {6,5,3,2,4,1,0};
 unsigned long lockTime[7] = {0};
 const unsigned long lockInterval = 10; //10ms
 unsigned long scrollTime = 0;
@@ -104,7 +104,7 @@ void loop() {
     }
 
     //update M1,2,3 for report
-    for (int i = 0; i<2; i++){
+    for (int i = 0; i<3; i++){
       if(buttonState[i] == 0){
         report.buttons |= (1<<i);
       }
@@ -113,30 +113,30 @@ void loop() {
       }
     }
 
-    // //update report wheel state
-    // //just sums button presses in case rapid switch happens during one report
-    // if(millis() > scrollTime){
-    //   if(buttonState[5] == LOW){
-    //     report.wheel++;
-    //     scrollTime = millis()+scrollInterval;
-    //   }
-    //   if(buttonState[6] == LOW){
-    //     report.wheel--;
-    //     scrollTime = millis()+scrollInterval;
-    //   }
-    // }
+    //update report wheel state
+    //just sums button presses in case rapid switch happens during one report
+    if(millis() > scrollTime){
+      if(buttonState[5] == LOW){
+        report.wheel++;
+        scrollTime = millis()+scrollInterval;
+      }
+      if(buttonState[6] == LOW){
+        report.wheel--;
+        scrollTime = millis()+scrollInterval;
+      }
+    }
 
-    // //update report pan state
-    // if(millis() > scrollTime){
-    //   if(buttonState[3] == LOW){
-    //     report.pan++;
-    //     scrollTime = millis()+scrollInterval;
-    //   }
-    //   if(buttonState[4] == LOW){
-    //     report.pan--;
-    //     scrollTime = millis()+scrollInterval;
-    //   }
-    // }
+    //update report pan state
+    if(millis() > scrollTime){
+      if(buttonState[3] == LOW){
+        report.pan++;
+        scrollTime = millis()+scrollInterval;
+      }
+      if(buttonState[4] == LOW){
+        report.pan--;
+        scrollTime = millis()+scrollInterval;
+      }
+    }
 
     //get sensor burst data frame and report x and y - use an interrupt later on
     //this may have to run a bit async as there may be several bursts per report.
@@ -159,6 +159,7 @@ void loop() {
       report.y = 0;
     }
 
+    Serial.println(digitalRead(buttonMap[0]));
     
   }
 }
